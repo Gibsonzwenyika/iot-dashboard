@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Register - IoT Dashboard</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f4f4f4; margin: 0; padding: 0; }
+    header { background: #333; color: #fff; padding: 1em; text-align: center; }
+    .container { max-width: 600px; margin: 2em auto; padding: 2em; background: #fff; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    input { margin: 0.5em 0; padding: 0.5em; width: 100%; }
+    button { padding: 0.7em 1.5em; background: #333; color: #fff; border: none; margin-top: 1em; cursor: pointer; }
+    p { color: red; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>User Registration</h1>
+  </header>
+
+  <div class="container">
+    <h2>Create a new account</h2>
+    <input type="text" id="username" placeholder="Username" />
+    <input type="password" id="password" placeholder="Password" />
+    <button onclick="register()">Register</button>
+    <p id="message"></p>
+    <p><a href="/">Go to Login</a></p>
+  </div>
+
+  <script>
+    function register() {
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+
+      fetch('/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      })
+      .then(res => res.json())
+      .then(data => {
+        const messageEl = document.getElementById('message');
+        if (data.message) {
+          messageEl.style.color = 'green';
+          messageEl.textContent = "✅ " + data.message;
+        } else {
+          messageEl.style.color = 'red';
+          messageEl.textContent = "❌ " + data.error;
+        }
+      })
+      .catch(() => {
+        document.getElementById('message').textContent = "❌ Registration failed";
+      });
+    }
+  </script>
+</body>
+</html>
