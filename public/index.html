@@ -171,10 +171,14 @@
     }
 
     function toggleBulb() {
-      const current = document.getElementById("bulb").textContent;
-      const newStatus = current === "ON" ? "OFF" : "ON";
-      socket.emit("bulb-command", newStatus);
-    }
+  const bulbButton = document.getElementById("bulbButton");
+  const current = document.getElementById("bulb").textContent;
+  const newStatus = current === "ON" ? "OFF" : "ON";
+
+  bulbButton.disabled = true; // Disable until server confirms
+  socket.emit("bulb-command", newStatus);
+}
+
 
     function updateBulbButton(status) {
       const bulbButton = document.getElementById('bulbButton');
