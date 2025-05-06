@@ -17,7 +17,7 @@ const io = socketIo(server, { cors: { origin: "*" } });
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public'))); // Serve HTML from /public
+app.use(express.static(path.join(__dirname, 'public'))); // Serve static files
 
 const SECRET = process.env.JWT_SECRET || 'fallback-secret';
 let latestData = { temperature: "--", humidity: "--", bulb: "OFF" };
@@ -30,7 +30,7 @@ mongoose.connect(process.env.MONGO_URI, {
 .then(() => console.log("✅ Connected to MongoDB Atlas"))
 .catch(err => console.error("❌ MongoDB connection error:", err));
 
-// Routes
+// Serve HTML pages
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public/index.html'));
 });
@@ -39,6 +39,7 @@ app.get('/register', (req, res) => {
   res.sendFile(path.join(__dirname, 'public/register.html'));
 });
 
+// Register route
 app.post('/register', async (req, res) => {
   const { username, password } = req.body;
   try {
@@ -55,6 +56,7 @@ app.post('/register', async (req, res) => {
   }
 });
 
+// Login route
 app.post('/login', async (req, res) => {
   const { username, password } = req.body;
   try {
@@ -72,13 +74,19 @@ app.post('/login', async (req, res) => {
   }
 });
 
+// Route to receive sensor data
 app.post('/data', async (req, res) => {
   latestData = req.body;
   console.log("📥 Received data:", latestData);
 
   await Data.create(latestData); // Save to MongoDB
-  io.emit("update", latestData); // Broadcast to clients
+  io.emit("update", latestData); // Send to all WebSocket clients
   res.sendStatus(200);
+});
+
+// 🔧 FIXED: Move this outside io.on(...)
+app.get('/status', (req, res) => {
+  res.send(latestData.bulb);
 });
 
 // WebSocket connection
