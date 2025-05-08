@@ -11,51 +11,7 @@
     }
   </script>
 </head>
-<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-100 font-sans min-h-screen">
-  <header class="bg-gray-800 text-white text-center py-4 shadow-md dark:bg-gray-700">
-    <h1 class="text-2xl font-bold">📡 IoT Dashboard</h1>
-  </header>
 
-  <main class="max-w-lg mx-auto mt-10 bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 space-y-6 transition duration-500">
-    <!-- LOGIN FORM -->
-    <div id="loginForm" class="space-y-4 hidden animate-fade-in">
-      <h2 class="text-xl font-bold">🔐 Login</h2>
-      <input type="text" id="username" placeholder="Username"
-             class="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring focus:ring-indigo-400 dark:bg-gray-700 dark:border-gray-600"/>
-      <input type="password" id="password" placeholder="Password"
-             class="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring focus:ring-indigo-400 dark:bg-gray-700 dark:border-gray-600"/>
-      <button onclick="login()"
-              class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 rounded-md flex items-center justify-center gap-2 transition transform hover:scale-105">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M12 5l7 7-7 7"/>
-        </svg>
-        Login
-      </button>
-      <p id="loginError" class="text-red-500 text-sm"></p>
-      <p class="text-sm">Don't have an account?
-        <a href="#" onclick="showRegister()" class="text-indigo-500 hover:underline">Register</a>
-      </p>
-    </div>
-
-    <!-- REGISTER FORM -->
-    <div id="registerForm" class="space-y-4 hidden animate-fade-in">
-      <h2 class="text-xl font-bold">📝 Register</h2>
-      <input type="text" id="regUsername" placeholder="Username"
-             class="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring focus:ring-indigo-400 dark:bg-gray-700 dark:border-gray-600"/>
-      <input type="password" id="regPassword" placeholder="Password"
-             class="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring focus:ring-indigo-400 dark:bg-gray-700 dark:border-gray-600"/>
-      <button onclick="register()"
-              class="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-2 rounded-md flex items-center justify-center gap-2 transition transform hover:scale-105">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
-        </svg>
-        Register
-      </button>
-      <p id="registerError" class="text-red-500 text-sm"></p>
-      <p class="text-sm">Already have an account?
-        <a href="#" onclick="showLogin()" class="text-indigo-500 hover:underline">Login</a>
-      </p>
-    </div>
 
     <!-- DASHBOARD -->
     <div id="dashboard" class="space-y-5 hidden animate-fade-in flex flex-col items-center text-center">
