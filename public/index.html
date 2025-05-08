@@ -58,6 +58,44 @@
       socket.emit("bulb-command", newStatus);
     }
 
+    function startVoiceControl() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    alert("Speech recognition not supported in this browser.");
+    return;
+  }
+
+  const recognition = new SpeechRecognition();
+  recognition.lang = "en-US";
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+
+  document.getElementById("voice-status").textContent = "🎤 Listening...";
+
+  recognition.start();
+
+  recognition.onresult = function(event) {
+    const command = event.results[0][0].transcript.toLowerCase();
+    console.log("Heard:", command);
+
+    if (command.includes("on")) {
+      socket.emit("bulb-command", "ON");
+    } else if (command.includes("off")) {
+      socket.emit("bulb-command", "OFF");
+    } else {
+      alert("Command not recognized. Say 'turn on bulb' or 'turn off bulb'.");
+    }
+
+    document.getElementById("voice-status").textContent = "✅ Command processed.";
+  };
+
+  recognition.onerror = function(event) {
+    console.error("Speech error:", event.error);
+    document.getElementById("voice-status").textContent = "❌ Voice error: " + event.error;
+  };
+}
+
+
     function updateBulbButton(status) {
       const bulbButton = document.getElementById('bulbButton');
       bulbButton.disabled = false;
