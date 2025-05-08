@@ -100,6 +100,33 @@ io.on("connection", (socket) => {
   });
 });
 
+const express = require('express');
+const bodyParser = require('body-parser');
+const app = express();
+const PORT = 3000;
+
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.json());
+
+let bulbStatus = 'OFF';
+
+app.post('/command', (req, res) => {
+  const command = req.body.command;
+  if (command === 'ON' || command === 'OFF') {
+    bulbStatus = command;
+    console.log(`Received command: ${bulbStatus}`);
+    // TODO: Relay to ESP32 or internal logic
+    res.status(200).send({ status: 'OK', bulb: bulbStatus });
+  } else {
+    res.status(400).send({ error: 'Invalid command' });
+  }
+});
+
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
+
+
 // Start server
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
