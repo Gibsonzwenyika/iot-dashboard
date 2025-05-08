@@ -11,8 +11,12 @@
     }
   </script>
 </head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-100 font-sans min-h-screen">
+  <header class="bg-gray-800 text-white text-center py-4 shadow-md dark:bg-gray-700">
+    <h1 class="text-2xl font-bold">📡 IoT Dashboard</h1>
+  </header>
 
-
+  <main class="max-w-lg mx-auto mt-10 bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 space-y-6 transition duration-500">
     <!-- DASHBOARD -->
     <div id="dashboard" class="space-y-5 hidden animate-fade-in flex flex-col items-center text-center">
       <div class="text-lg flex items-center gap-2">🌡️ Temperature:
@@ -46,21 +50,9 @@
   <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
   <script>
     let socket;
-    let token = localStorage.getItem('token');
-
-    function clearInputs() {
-      ['username', 'password', 'regUsername', 'regPassword'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.value = '';
-      });
-    }
 
     function showDashboard() {
-      document.getElementById('loginForm').style.display = 'none';
-      document.getElementById('registerForm').style.display = 'none';
       document.getElementById('dashboard').style.display = 'block';
-      clearInputs();
-
       socket = io();
       socket.on("update", (data) => {
         document.getElementById("temperature").textContent = data.temperature;
@@ -70,90 +62,26 @@
       });
     }
 
-    function showLogin() {
-      document.getElementById('loginForm').style.display = 'block';
-      document.getElementById('registerForm').style.display = 'none';
-      document.getElementById('dashboard').style.display = 'none';
-    }
-
-    function showRegister() {
-      document.getElementById('loginForm').style.display = 'none';
-      document.getElementById('registerForm').style.display = 'block';
-      document.getElementById('dashboard').style.display = 'none';
-    }
-
-    function login() {
-      const username = document.getElementById('username').value;
-      const password = document.getElementById('password').value;
-      fetch('/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
-      })
-      .then(res => res.json())
-      .then(data => {
-        if (data.token) {
-          localStorage.setItem('token', data.token);
-          showDashboard();
-        } else {
-          document.getElementById('loginError').textContent = data.error;
-        }
-      })
-      .catch(() => {
-        document.getElementById('loginError').textContent = 'Login failed';
-      });
-    }
-
-    function register() {
-      const username = document.getElementById('regUsername').value;
-      const password = document.getElementById('regPassword').value;
-      fetch('/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
-      })
-      .then(res => res.json())
-      .then(data => {
-        if (data.message) {
-          alert("Registration successful! Please login.");
-          showLogin();
-        } else {
-          document.getElementById('registerError').textContent = data.error;
-        }
-      })
-      .catch(() => {
-        document.getElementById('registerError').textContent = 'Registration failed';
-      });
-    }
-
     function toggleBulb() {
-  const bulbButton = document.getElementById("bulbButton");
-  const current = document.getElementById("bulb").textContent;
-  const newStatus = current === "ON" ? "OFF" : "ON";
+      const bulbButton = document.getElementById("bulbButton");
+      const current = document.getElementById("bulb").textContent;
+      const newStatus = current === "ON" ? "OFF" : "ON";
 
-  bulbButton.disabled = true; // Disable until server confirms
-  socket.emit("bulb-command", newStatus);
-}
-
+      bulbButton.disabled = true; // Disable until server confirms
+      socket.emit("bulb-command", newStatus);
+    }
 
     function updateBulbButton(status) {
       const bulbButton = document.getElementById('bulbButton');
-      if (status === "ON") {
-        bulbButton.classList.remove('bg-red-500');
-        bulbButton.classList.add('bg-green-500');
-      } else {
-        bulbButton.classList.remove('bg-green-500');
-        bulbButton.classList.add('bg-red-500');
-      }
+      bulbButton.classList.remove('bg-red-500', 'bg-green-500');
+      bulbButton.classList.add(status === "ON" ? 'bg-green-500' : 'bg-red-500');
     }
 
     function logout() {
-      localStorage.removeItem('token');
-      showLogin();
+      showDashboard();
     }
 
-    if (token) showDashboard();
-    else showLogin();
+    showDashboard(); // Always show dashboard
   </script>
 
   <style>
