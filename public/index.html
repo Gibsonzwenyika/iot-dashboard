@@ -36,11 +36,10 @@
           </svg>
           Toggle Bulb
         </button>
-        <button onclick="startVoiceControl()" class="bg-indigo-600 text-white py-2 px-4 rounded-md mt-4 hover:bg-indigo-700 transition">
-  🎤 Start Voice Control
-</button>
-<p id="voice-status" class="text-sm text-gray-500 dark:text-gray-400 mt-2">Say "turn on bulb" or "turn off bulb"</p>
-
+        <button id="voiceControlButton" onclick="toggleVoiceControl()" class="bg-indigo-600 text-white py-2 px-4 rounded-md mt-4 hover:bg-indigo-700 transition">
+          🎤 Start Voice Control
+        </button>
+        <p id="voice-status" class="text-sm text-gray-500 dark:text-gray-400 mt-2">Say "turn on bulb" or "turn off bulb"</p>
       </div>
     </div>
   </main>
@@ -48,6 +47,8 @@
   <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
   <script>
     let socket;
+    let recognition;
+    let voiceControlActive = false; // Track voice control state
 
     function toggleBulb() {
       const bulbButton = document.getElementById("bulbButton");
@@ -58,43 +59,63 @@
       socket.emit("bulb-command", newStatus);
     }
 
-    function startVoiceControl() {
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SpeechRecognition) {
-    alert("Speech recognition not supported in this browser.");
-    return;
-  }
-
-  const recognition = new SpeechRecognition();
-  recognition.lang = "en-US";
-  recognition.interimResults = false;
-  recognition.maxAlternatives = 1;
-
-  document.getElementById("voice-status").textContent = "🎤 Listening...";
-
-  recognition.start();
-
-  recognition.onresult = function(event) {
-    const command = event.results[0][0].transcript.toLowerCase();
-    console.log("Heard:", command);
-
-    if (command.includes("on")) {
-      socket.emit("bulb-command", "ON");
-    } else if (command.includes("off")) {
-      socket.emit("bulb-command", "OFF");
-    } else {
-      alert("Command not recognized. Say 'turn on bulb' or 'turn off bulb'.");
+    function toggleVoiceControl() {
+      if (voiceControlActive) {
+        stopVoiceControl();
+      } else {
+        startVoiceControl();
+      }
     }
 
-    document.getElementById("voice-status").textContent = "✅ Command processed.";
-  };
+    function startVoiceControl() {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        alert("Speech recognition not supported in this browser.");
+        return;
+      }
 
-  recognition.onerror = function(event) {
-    console.error("Speech error:", event.error);
-    document.getElementById("voice-status").textContent = "❌ Voice error: " + event.error;
-  };
-}
+      recognition = new SpeechRecognition();
+      recognition.lang = "en-US";
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
 
+      document.getElementById("voice-status").textContent = "🎤 Listening...";
+
+      recognition.start();
+
+      recognition.onresult = function(event) {
+        const command = event.results[0][0].transcript.toLowerCase();
+        console.log("Heard:", command);
+
+        if (command.includes("on")) {
+          socket.emit("bulb-command", "ON");
+        } else if (command.includes("off")) {
+          socket.emit("bulb-command", "OFF");
+        } else {
+          alert("Command not recognized. Say 'turn on bulb' or 'turn off bulb'.");
+        }
+
+        document.getElementById("voice-status").textContent = "✅ Command processed.";
+      };
+
+      recognition.onerror = function(event) {
+        console.error("Speech error:", event.error);
+        document.getElementById("voice-status").textContent = "❌ Voice error: " + event.error;
+      };
+
+      voiceControlActive = true; // Mark voice control as active
+      document.getElementById("voiceControlButton").textContent = "🎤 Stop Voice Control"; // Change button text
+    }
+
+    function stopVoiceControl() {
+      if (recognition) {
+        recognition.stop(); // Stop voice recognition
+      }
+
+      voiceControlActive = false; // Mark voice control as inactive
+      document.getElementById("voiceControlButton").textContent = "🎤 Start Voice Control"; // Change button text
+      document.getElementById("voice-status").textContent = "Voice control stopped.";
+    }
 
     function updateBulbButton(status) {
       const bulbButton = document.getElementById('bulbButton');
