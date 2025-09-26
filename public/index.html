@@ -8,6 +8,29 @@
   <script>
     tailwind.config = { darkMode: 'class' }
   </script>
+  <style>
+    @keyframes fade-in { 
+      from { opacity: 0; transform: translateY(10px); } 
+      to { opacity: 1; transform: translateY(0); } 
+    }
+    .animate-fade-in { animation: fade-in 0.5s ease-out; }
+
+    /* Bulb glow animation */
+    @keyframes glow-pulse {
+      0%, 100% { text-shadow: 0 0 8px #facc15, 0 0 16px #facc15, 0 0 24px #facc15; }
+      50% { text-shadow: 0 0 12px #facc15, 0 0 20px #facc15, 0 0 28px #facc15; }
+    }
+    .bulb-on {
+      color: #facc15;
+      animation: glow-pulse 1.5s infinite ease-in-out;
+      transition: color 0.3s ease;
+    }
+    .bulb-off {
+      color: #9ca3af;
+      animation: none;
+      transition: color 0.3s ease;
+    }
+  </style>
 </head>
 <body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-100 font-sans min-h-screen">
   <header class="bg-gray-800 text-white text-center py-4 shadow-md dark:bg-gray-700">
@@ -23,7 +46,7 @@
         <span id="humidity" class="font-semibold text-blue-500">--</span> %
       </div>
       <div class="text-lg flex items-center gap-2">💡 Bulb Status:
-        <svg id="bulb-icon" class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+        <svg id="bulb-icon" class="w-6 h-6 bulb-off" fill="currentColor" viewBox="0 0 24 24">
           <path d="M12 2a7 7 0 0 0-7 7c0 3.31 2.69 6 6 6h2c3.31 0 6-2.69 6-6a7 7 0 0 0-7-7zm0 14v2h-2v2h4v-2h-2v-2z"/>
         </svg>
         <span id="bulb" class="font-semibold text-yellow-500">OFF</span>
@@ -50,14 +73,15 @@
     let recognition;
     let voiceControlActive = false;
 
+    // Toggle bulb manually
     function toggleBulb() {
-      const bulbButton = document.getElementById("bulbButton");
       const current = document.getElementById("bulb").textContent;
       const newStatus = current === "ON" ? "OFF" : "ON";
-      bulbButton.disabled = true;
+      document.getElementById("bulbButton").disabled = true;
       socket.emit("bulb-command", newStatus);
     }
 
+    // Voice control toggle
     function toggleVoiceControl(event) {
       voiceControlActive ? stopVoiceControl(event) : startVoiceControl(event);
     }
@@ -79,10 +103,7 @@
         const command = e.results[0][0].transcript.toLowerCase();
         if (command.includes("on")) socket.emit("bulb-command", "ON");
         else if (command.includes("off")) socket.emit("bulb-command", "OFF");
-        else {
-          document.getElementById("voice-status").textContent = "🤷 Command not recognized.";
-          return;
-        }
+        else { document.getElementById("voice-status").textContent = "🤷 Command not recognized."; return; }
         document.getElementById("voice-status").textContent = "✅ Command processed. Listening...";
       };
 
@@ -102,17 +123,22 @@
       document.getElementById("voice-status").textContent = "Voice control stopped.";
     }
 
+    // Update bulb UI
     function updateBulbUI(status) {
       const bulb = document.getElementById("bulb");
       const icon = document.getElementById("bulb-icon");
+
       bulb.textContent = status;
-      icon.classList.toggle("text-yellow-500", status === "ON");
-      icon.classList.toggle("text-gray-400", status !== "ON");
-      document.getElementById("bulbButton").disabled = false;
-      document.getElementById("bulbButton").classList.toggle('bg-red-500', status !== "ON");
-      document.getElementById("bulbButton").classList.toggle('bg-green-500', status === "ON");
+      icon.classList.toggle("bulb-on", status === "ON");
+      icon.classList.toggle("bulb-off", status !== "ON");
+
+      const btn = document.getElementById("bulbButton");
+      btn.disabled = false;
+      btn.classList.toggle('bg-red-500', status !== "ON");
+      btn.classList.toggle('bg-green-500', status === "ON");
     }
 
+    // Initialize dashboard
     function showDashboard() {
       socket = io();
       socket.on("update", data => {
@@ -124,13 +150,5 @@
 
     showDashboard();
   </script>
-
-  <style>
-    @keyframes fade-in {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    .animate-fade-in { animation: fade-in 0.5s ease-out; }
-  </style>
 </body>
 </html>
