@@ -1,26 +1,21 @@
 require('dotenv').config();
 const express = require('express');
-const http = require('http');
-const socketIo = require('socket.io');
 const cors = require('cors');
 const mongoose = require('mongoose');
-const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
+const bodyParser = require('body-parser');
 const path = require('path');
 
 const User = require('./models/User');
 const Data = require('./models/Data');
 
 const app = express();
-const server = http.createServer(app);
-const io = socketIo(server, { cors: { origin: "*" } });
-
 app.use(cors());
-app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public'))); // Serve static files
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(express.static(path.join(__dirname, 'public')));
 
-const SECRET = process.env.JWT_SECRET || 'fallback-secret';
 let latestData = { temperature: "--", humidity: "--", bulb: "OFF" };
+let bulbStatus = "OFF";
 
 // MongoDB connection
 mongoose.connect(process.env.MONGO_URI, {
@@ -31,15 +26,10 @@ mongoose.connect(process.env.MONGO_URI, {
 .catch(err => console.error("❌ MongoDB connection error:", err));
 
 // Serve HTML pages
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public/index.html'));
-});
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public/index.html')));
+app.get('/register', (req, res) => res.sendFile(path.join(__dirname, 'public/register.html')));
 
-app.get('/register', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public/register.html'));
-});
-
-// Register route
+// User Registration
 app.post('/register', async (req, res) => {
   const { username, password } = req.body;
   try {
@@ -48,15 +38,14 @@ app.post('/register', async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
     await User.create({ username, password: hashedPassword });
-
     res.status(201).json({ message: "User registered successfully" });
   } catch (err) {
-    console.error("Registration error:", err);
+    console.error(err);
     res.status(500).json({ error: "Registration failed" });
   }
 });
 
-// Login route
+// User Login
 app.post('/login', async (req, res) => {
   const { username, password } = req.body;
   try {
@@ -66,69 +55,41 @@ app.post('/login', async (req, res) => {
     const match = await bcrypt.compare(password, user.password);
     if (!match) return res.status(400).json({ error: "Invalid credentials" });
 
-    const token = jwt.sign({ username }, SECRET, { expiresIn: '1h' });
+    const token = jwt.sign({ username }, process.env.JWT_SECRET || 'fallback-secret', { expiresIn: '1h' });
     res.json({ token });
   } catch (err) {
-    console.error("Login error:", err);
-    res.status(500).json({ error: "Internal server error" });
+    console.error(err);
+    res.status(500).json({ error: "Login failed" });
   }
 });
 
-// Route to receive sensor data
+// ESP32 posts sensor data
 app.post('/data', async (req, res) => {
   latestData = req.body;
   console.log("📥 Received data:", latestData);
-
-  await Data.create(latestData); // Save to MongoDB
-  io.emit("update", latestData); // Send to all WebSocket clients
+  await Data.create(latestData);
   res.sendStatus(200);
 });
 
-// 🔧 FIXED: Move this outside io.on(...)
-app.get('/status', (req, res) => {
-  res.send(latestData.bulb);
+// ESP32 polls bulb status
+app.get('/bulb/status', (req, res) => {
+  res.send(bulbStatus);
 });
 
-// WebSocket connection
-io.on("connection", (socket) => {
-  console.log("🔌 Client connected");
-  socket.emit("update", latestData);
-
-  socket.on("bulb-command", (status) => {
-    latestData.bulb = status;
-    io.emit("update", latestData);
-  });
-});
-
-const express = require('express');
-const bodyParser = require('body-parser');
-const app = express();
-const PORT = 3000;
-
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(bodyParser.json());
-
-let bulbStatus = 'OFF';
-
-app.post('/command', (req, res) => {
-  const command = req.body.command;
-  if (command === 'ON' || command === 'OFF') {
-    bulbStatus = command;
-    console.log(`Received command: ${bulbStatus}`);
-    // TODO: Relay to ESP32 or internal logic
-    res.status(200).send({ status: 'OK', bulb: bulbStatus });
+// Dashboard posts bulb command
+app.post('/bulb/:state', (req, res) => {
+  const state = req.params.state.toUpperCase();
+  if (state === "ON" || state === "OFF") {
+    bulbStatus = state;
+    console.log(`Bulb set to: ${bulbStatus}`);
+    res.json({ bulb: bulbStatus });
   } else {
-    res.status(400).send({ error: 'Invalid command' });
+    res.status(400).json({ error: "Invalid bulb state" });
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+// Dashboard fetches latest sensor data
+app.get('/data', (req, res) => res.json(latestData));
 
-
-// Start server
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`🚀 Server running at http://localhost:${PORT}`);
-});
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
