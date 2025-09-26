@@ -87,12 +87,12 @@ app.get('/bulb/status', (req, res) => {
   res.send(bulbStatus);
 });
 
-// Dashboard posts bulb command
+// Dashboard posts bulb command (button or voice)
 app.post('/bulb/:state', (req, res) => {
   const state = req.params.state.toUpperCase();
   if (state === "ON" || state === "OFF") {
     bulbStatus = state;
-    console.log(`Bulb set to: ${bulbStatus}`);
+    console.log(`💡 Bulb set to: ${bulbStatus}`);
 
     // Broadcast updated bulb status to all dashboards
     io.emit('update', { ...latestData, bulb: bulbStatus });
@@ -112,6 +112,17 @@ io.on('connection', (socket) => {
   
   // Send current data immediately on new connection
   socket.emit('update', latestData);
+
+  // Listen for bulb commands from dashboard (button or voice)
+  socket.on('bulb-command', (state) => {
+    state = state.toUpperCase();
+    if (state === "ON" || state === "OFF") {
+      bulbStatus = state;
+      latestData.bulb = bulbStatus;
+      console.log(`💡 Bulb set via Socket.IO: ${bulbStatus}`);
+      io.emit('update', latestData);
+    }
+  });
 
   socket.on('disconnect', () => {
     console.log('❌ Dashboard disconnected');
