@@ -4,11 +4,18 @@ const cors = require('cors');
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
 const path = require('path');
+const http = require('http');
+const { Server } = require('socket.io');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 
 const User = require('./models/User');
 const Data = require('./models/Data');
 
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server, { cors: { origin: "*" } });
+
 app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -68,6 +75,10 @@ app.post('/data', async (req, res) => {
   latestData = req.body;
   console.log("📥 Received data:", latestData);
   await Data.create(latestData);
+
+  // Broadcast to all connected dashboard clients
+  io.emit('update', latestData);
+
   res.sendStatus(200);
 });
 
@@ -82,14 +93,30 @@ app.post('/bulb/:state', (req, res) => {
   if (state === "ON" || state === "OFF") {
     bulbStatus = state;
     console.log(`Bulb set to: ${bulbStatus}`);
+
+    // Broadcast updated bulb status to all dashboards
+    io.emit('update', { ...latestData, bulb: bulbStatus });
+
     res.json({ bulb: bulbStatus });
   } else {
     res.status(400).json({ error: "Invalid bulb state" });
   }
 });
 
-// Dashboard fetches latest sensor data
+// Dashboard fetches latest sensor data (fallback for HTTP polling)
 app.get('/data', (req, res) => res.json(latestData));
 
+// Handle Socket.IO connections
+io.on('connection', (socket) => {
+  console.log('🔗 Dashboard connected');
+  
+  // Send current data immediately on new connection
+  socket.emit('update', latestData);
+
+  socket.on('disconnect', () => {
+    console.log('❌ Dashboard disconnected');
+  });
+});
+
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+server.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
