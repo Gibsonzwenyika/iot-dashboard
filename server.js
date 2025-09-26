@@ -24,7 +24,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 let latestData = { temperature: "--", humidity: "--", bulb: "OFF" };
 let bulbStatus = "OFF";
 
-// MongoDB connection
+// --- MongoDB connection ---
 mongoose.connect(process.env.MONGO_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true
@@ -32,16 +32,15 @@ mongoose.connect(process.env.MONGO_URI, {
 .then(() => console.log("✅ Connected to MongoDB Atlas"))
 .catch(err => console.error("❌ MongoDB connection error:", err));
 
-// Serve HTML pages
+// --- Serve HTML pages ---
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public/index.html')));
 app.get('/register', (req, res) => res.sendFile(path.join(__dirname, 'public/register.html')));
 
-// User Registration
+// --- User Registration ---
 app.post('/register', async (req, res) => {
   const { username, password } = req.body;
   try {
-    const existingUser = await User.findOne({ username });
-    if (existingUser) return res.status(400).json({ error: "Username already exists" });
+    if (await User.findOne({ username })) return res.status(400).json({ error: "Username already exists" });
 
     const hashedPassword = await bcrypt.hash(password, 10);
     await User.create({ username, password: hashedPassword });
@@ -52,15 +51,14 @@ app.post('/register', async (req, res) => {
   }
 });
 
-// User Login
+// --- User Login ---
 app.post('/login', async (req, res) => {
   const { username, password } = req.body;
   try {
     const user = await User.findOne({ username });
     if (!user) return res.status(400).json({ error: "Invalid credentials" });
 
-    const match = await bcrypt.compare(password, user.password);
-    if (!match) return res.status(400).json({ error: "Invalid credentials" });
+    if (!(await bcrypt.compare(password, user.password))) return res.status(400).json({ error: "Invalid credentials" });
 
     const token = jwt.sign({ username }, process.env.JWT_SECRET || 'fallback-secret', { expiresIn: '1h' });
     res.json({ token });
@@ -70,56 +68,57 @@ app.post('/login', async (req, res) => {
   }
 });
 
-// ESP32 posts sensor data
+// --- ESP32 posts sensor data ---
 app.post('/data', async (req, res) => {
   latestData = req.body;
   console.log("📥 Received data:", latestData);
   await Data.create(latestData);
 
-  // Broadcast to all connected dashboard clients
+  // Broadcast to all dashboards immediately
   io.emit('update', latestData);
-
   res.sendStatus(200);
 });
 
-// ESP32 polls bulb status
+// --- ESP32 polls bulb status ---
 app.get('/bulb/status', (req, res) => {
   res.send(bulbStatus);
 });
 
-// Dashboard posts bulb command (button or voice)
+// --- Dashboard sends bulb command ---
 app.post('/bulb/:state', (req, res) => {
   const state = req.params.state.toUpperCase();
   if (state === "ON" || state === "OFF") {
     bulbStatus = state;
-    console.log(`💡 Bulb set to: ${bulbStatus}`);
+    latestData.bulb = bulbStatus;
+    console.log(`💡 Bulb set via HTTP POST: ${bulbStatus}`);
 
-    // Broadcast updated bulb status to all dashboards
-    io.emit('update', { ...latestData, bulb: bulbStatus });
-
+    // Broadcast updated data to all dashboards
+    io.emit('update', latestData);
     res.json({ bulb: bulbStatus });
   } else {
     res.status(400).json({ error: "Invalid bulb state" });
   }
 });
 
-// Dashboard fetches latest sensor data (fallback for HTTP polling)
+// --- Dashboard fetches latest sensor data (HTTP fallback) ---
 app.get('/data', (req, res) => res.json(latestData));
 
-// Handle Socket.IO connections
+// --- Socket.IO connection ---
 io.on('connection', (socket) => {
   console.log('🔗 Dashboard connected');
-  
-  // Send current data immediately on new connection
+
+  // Send current data immediately
   socket.emit('update', latestData);
 
-  // Listen for bulb commands from dashboard (button or voice)
+  // Listen for bulb commands
   socket.on('bulb-command', (state) => {
     state = state.toUpperCase();
     if (state === "ON" || state === "OFF") {
       bulbStatus = state;
       latestData.bulb = bulbStatus;
       console.log(`💡 Bulb set via Socket.IO: ${bulbStatus}`);
+
+      // Broadcast to all dashboards
       io.emit('update', latestData);
     }
   });
